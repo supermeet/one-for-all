@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 one-for-all = "one_for_all.server:main"
+one-for-all-cli = "one_for_all.cli:main"
 
 [build-system]
 requires = ["hatchling"]

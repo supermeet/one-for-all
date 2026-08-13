@@ -152,13 +152,19 @@ class Store:
 
     # -- reading ----------------------------------------------------------
 
-    def search(self, query: str, limit: int = 8) -> list[Memory]:
+    def search(self, query: str, limit: int = 8, mark_used: bool = True) -> list[Memory]:
         """Retrieve live memories relevant to `query`, best match first.
 
         The single retrieval path in the system — every component recalls
         through here, so improving retrieval is a change to one function.
         Today: BM25 over FTS5. Next: fuse in vector similarity and rank by a
         combined score.
+
+        `mark_used=False` is for callers that fetch a wide candidate set and
+        then narrow it — the curator, chiefly. Usage is the decay signal that
+        eventually separates a live memory from landfill, so it has to mean
+        "this was actually surfaced", not "this was considered". Those callers
+        call `mark_used()` themselves once they know what survived.
         """
         rows = self.db.execute(
             """
@@ -170,7 +176,8 @@ class Store:
             """,
             (_fts_query(query), limit),
         ).fetchall()
-        self._mark_used([r["id"] for r in rows])
+        if mark_used:
+            self.mark_used([r["id"] for r in rows])
         return [_to_memory(r) for r in rows]
 
     def recent(self, limit: int = 20, scope: str | None = None) -> list[Memory]:
@@ -200,7 +207,7 @@ class Store:
             current = row["superseded_by"]
         return chain
 
-    def _mark_used(self, ids: list[int]) -> None:
+    def mark_used(self, ids: list[int]) -> None:
         """Usage is the decay signal — it is how a live memory is eventually
         told apart from landfill."""
         if not ids:
